@@ -1,72 +1,146 @@
+const fs = require('fs');
+const path = require('path');
+
 class LegoData {
     constructor() {
-        this.sets = [];  // Correct: setup property inside constructor
-    }
-
-    addSet(newSet) {
-        return new Promise((resolve, reject) => {
-            const exists = this.sets.find(set => set.set_num === newSet.set_num);
-            if (exists) {
-                reject("Set already exists");
-            } else {
-                this.sets.push(newSet);
-                resolve(); // Successfully added
-            }
-        });
+        this.sets = [];
+        this.themes = [];
+        this.setDataPath = path.join(__dirname, '..', 'data', 'setData.json');
+        this.themeDataPath = path.join(__dirname, '..', 'data', 'themeData.json');
     }
 
     async initialize() {
-        // Loads set and theme data asynchronously
         return new Promise((resolve, reject) => {
             try {
-                this.setData = require("../data/setData.json"); // Load set data
-                this.themeData = require("../data/themeData.json"); // Load theme data
-                resolve(); // Resolves the Promise once data is loaded
-            } catch (error) {
-                reject(`Failed initialization: ${error.message}`); // Handles loading errors
-            }
-        });
-    }
-    
-    async getAllSets() {
-        // Processes set data by matching themes
-        return new Promise((resolve, reject) => {
-            try {
+                this.setData = JSON.parse(fs.readFileSync(this.setDataPath, 'utf8'));
+
+                // ✅ Ensure theme IDs are strings
+                this.themes = JSON.parse(fs.readFileSync(this.themeDataPath, 'utf8')).map(theme => ({
+                    ...theme,
+                    id: String(theme.id)
+                }));
+
+                // Map and add theme names to sets
                 this.sets = this.setData.map(setElement => {
-                    // Finds matching theme for each set
-                    const themeObject = this.themeData.find(themeElement => themeElement.id === setElement.theme_id);
-                    // Assigns theme name or a default placeholder
+                    const themeObject = this.themes.find(t => t.id === String(setElement.theme_id));
                     setElement.theme = themeObject ? themeObject.name : "Unknown theme";
                     return setElement;
                 });
-                resolve(this.sets); // Returns processed sets
+
+                resolve();
             } catch (error) {
-                reject(`Couldn't get all the sets: ${error.message}`); // Handles processing errors
+                reject(`Failed initialization: ${error.message}`);
+            }
+        });
+    }
+
+    async getAllSets() {
+        return new Promise((resolve, reject) => {
+            try {
+                resolve(this.sets);
+            } catch (error) {
+                reject(`Couldn't get all the sets: ${error.message}`);
             }
         });
     }
 
     async getSetByNum(setNum) {
-        // Retrieves a LEGO set by its unique set number
         return new Promise((resolve, reject) => {
             try {
-                resolve(this.sets.find(setElement => setElement.set_num === setNum)); // Returns matching set
+                const match = this.sets.find(set => set.set_num === setNum);
+                if (match) {
+                    resolve(match);
+                } else {
+                    reject("Set not found");
+                }
             } catch (error) {
-                reject(`Unable to find requested set: ${error.message}`); // Handles lookup errors
-            };
+                reject(`Unable to find requested set: ${error.message}`);
+            }
         });
     }
 
     async getSetsByTheme(theme) {
-        // Filters sets by a given theme name (case-insensitive)
         return new Promise((resolve, reject) => {
             try {
-                const setsByTheme = this.sets.filter(setElement => 
-                    setElement.theme.toLowerCase().includes(theme.toLowerCase())
+                const setsByTheme = this.sets.filter(set =>
+                    set.theme.toLowerCase().includes(theme.toLowerCase())
                 );
-                resolve(setsByTheme); // Returns filtered sets
+                resolve(setsByTheme);
             } catch (error) {
-                reject(`Unable to find the requested set: ${error.message}`); // Handles filtering errors
+                reject(`Unable to find the requested set: ${error.message}`);
+            }
+        });
+    }
+
+    async addSet(newSet) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const exists = this.sets.find(set => set.set_num === newSet.set_num);
+                if (exists) {
+                    reject("Set already exists");
+                } else {
+                    let foundTheme = this.themes.find(t => t.id == newSet.theme_id);
+                    if (!foundTheme) {
+                        reject("Invalid theme_id");
+                        return;
+                    }
+
+                    newSet.theme = foundTheme.name;
+
+                    this.sets.push(newSet);
+                    this.setData.push(newSet);
+
+                    fs.writeFile(this.setDataPath, JSON.stringify(this.setData, null, 2), (err) => {
+                        if (err) {
+                            reject("Failed to save new set to file: " + err);
+                        } else {
+                            resolve();
+                        }
+                    });
+                }
+            } catch (err) {
+                reject("Error adding set: " + err);
+            }
+        });
+    }
+
+    deleteSetByNum(setNum) {
+        return new Promise((resolve, reject) => {
+            const index = this.sets.findIndex(set => set.set_num === setNum);
+            if (index !== -1) {
+                this.sets.splice(index, 1);
+                this.setData.splice(index, 1);
+
+                fs.writeFile(this.setDataPath, JSON.stringify(this.setData, null, 2), (err) => {
+                    if (err) {
+                        reject("Failed to update file: " + err);
+                    } else {
+                        resolve();
+                    }
+                });
+            } else {
+                reject("Set not found");
+            }
+        });
+    }
+
+    getAllThemes() {
+        return new Promise((resolve, reject) => {
+            if (this.themes.length > 0) {
+                resolve(this.themes);
+            } else {
+                reject("no themes available");
+            }
+        });
+    }
+
+    getThemeById(id) {
+        return new Promise((resolve, reject) => {
+            const theme = this.themes.find(t => t.id == id);
+            if (theme) {
+                resolve(theme);
+            } else {
+                reject("unable to find requested theme");
             }
         });
     }

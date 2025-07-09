@@ -1,0 +1,28 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <div class="container">
+    <a class="navbar-brand" href="#">Dhruvkumar Katariya</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+      aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+  <a class="nav-link <%= page == '/' ? 'active' : '' %>" href="/">Home</a>
+</li>
+<li class="nav-item">
+  <a class="nav-link <%= page == '/about' ? 'active' : '' %>" href="/about">About</a>
+</li>
+<li class="nav-item">
+  <a class="nav-link <%= page == '/lego/sets' ? 'active' : '' %>" href="/lego/sets">Collection</a>
+</li>
+<li class="nav-item">
+  <a class="nav-link <%= page == '/lego/sets/add' ? 'active' : '' %>" href="/lego/sets/add">Add to Collection</a>
+</li>
+
+
+      <!-- Removed unused Set and Theme links from right side as instructed -->
+    </div>
+  </div>
+</nav>
